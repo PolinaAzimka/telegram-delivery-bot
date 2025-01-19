@@ -31,8 +31,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def process_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls = update.message.text.split()
-    response_message = "Я обработаю следующие ссылки:
-"
+    response_message = "Я обработаю следующие ссылки:\n"
     total_weight = 0
 
     for url in urls:
