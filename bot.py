@@ -14,15 +14,25 @@ FIRST_KG_COST = int(os.getenv("FIRST_KG_COST", 3000))
 ADDITIONAL_HALF_KG_COST = int(os.getenv("ADDITIONAL_HALF_KG_COST", 1000))
 VOLUME_WEIGHT_DIVISOR = int(os.getenv("VOLUME_WEIGHT_DIVISOR", 5000))
 
+# Справочник стандартных весов с учетом упаковки (в кг)
+standard_weights = {
+    "футболка": 0.3,  # 0.2 кг товар + 0.1 кг упаковка
+    "куртка": 1.2,    # 1.0 кг товар + 0.2 кг упаковка
+    "платье": 0.6,    # 0.5 кг товар + 0.1 кг упаковка
+    "джинсы": 0.8,    # 0.7 кг товар + 0.1 кг упаковка
+    "обувь": 1.5      # 1.2 кг товар + 0.3 кг упаковка
+}
+
 # Логирование
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Привет! Отправьте мне ссылки на товары, и я помогу рассчитать стоимость доставки.")
+    await update.message.reply_text("Привет! Отправьте мне ссылки на товары, и я помогу рассчитать стоимость доставки с учетом упаковки.")
 
 async def process_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     urls = update.message.text.split()
-    response_message = "Я обработаю следующие ссылки:\n"
+    response_message = "Я обработаю следующие ссылки:
+"
     total_weight = 0
 
     for url in urls:
@@ -31,7 +41,7 @@ async def process_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
             total_weight += weight
             response_message += f"{url} - {weight} кг\n"
         else:
-            response_message += f"{url} - Не удалось получить данные\n"
+            response_message += f"{url} - Не удалось получить данные, использую стандартное значение.\n"
 
     total_cost = calculate_delivery_cost(total_weight)
     response_message += f"Общий вес: {total_weight:.2f} кг\nСтоимость доставки: {total_cost} йен"
@@ -42,13 +52,14 @@ def parse_product(url):
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, "html.parser")
-            # Пример извлечения данных (нужно адаптировать под разные сайты)
-            weight_tag = soup.find("span", class_="product-weight")
-            if weight_tag:
-                weight = float(weight_tag.text.strip().replace("kg", "").replace(",", "."))
-                return weight
-            else:
-                return None
+            title_tag = soup.find("title")
+            if title_tag:
+                title = title_tag.text.lower()
+                for keyword, weight in standard_weights.items():
+                    if keyword in title:
+                        return weight
+
+            return None
         else:
             return None
     except Exception as e:
